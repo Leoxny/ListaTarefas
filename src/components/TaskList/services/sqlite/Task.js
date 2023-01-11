@@ -9,9 +9,10 @@ import db from '../db';
 db.transaction(tx => {
 
     //TESTING!!!
-    tx.executeSql(
-        "DROP TABLE taks;"
-    )
+    
+    // tx.executeSql(
+    //     "DROP TABLE taks;"
+    // )
 
     //TESTING!!!
     tx.executeSql(
