@@ -33,8 +33,8 @@ export default function App() {
           },
         );
       });
-    }catch(err){
-      console.log("ERRO AO CRIAR TABELA=>", err);
+    }catch(error){
+      console.log("ERRO AO CRIAR TABELA=>", error);
     }
   };
 
@@ -55,8 +55,8 @@ export default function App() {
           },
         );
       });
-    }catch (err) {
-      console.log('ERRO AO ADICIONAR=>', err);
+    }catch (error) {
+      console.log('ERRO AO ADICIONAR=>', error);
     }
   };
 
@@ -83,8 +83,8 @@ export default function App() {
         );
       });
 
-    }catch(err){
-      console.log('ERRO AO OBTER=>', err);
+    }catch(error){
+      console.log('ERRO AO OBTER=>', error);
     }
   };
 
@@ -111,17 +111,19 @@ export default function App() {
   }, []);
 
 
-  const handleDelete = (id) => { 
-    db.transaction(txn => {
-      txn.executeSql(
-        'DELETE FROM task WHERE id = ?',
-        [id],
-        (sqlTxn, res) => {
-          console.log("Exlcuido com sucesso");
-        },
-        error => {console.log('ERRO AO EXCLUIR =>', error);}
-      )
-    })
+  const handleDelete = async () => { 
+    try{
+      db.transaction(txn => {
+        txn.executeSql(
+          'DELETE FROM tasks WHERE id = ?',
+          [],
+          () => {},
+          error => {console.log(error)}
+        )
+      })
+    }catch(error){
+      console.log(error)
+    }
   }
 
   return (
