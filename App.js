@@ -1,59 +1,128 @@
 import { StyleSheet, Text, View, SafeAreaView, StatusBar,TouchableOpacity, FlatList, Modal, TextInput } from 'react-native';
 import {Ionicons} from '@expo/vector-icons'
-import React, {useState, useCallback, useEffect} from 'react';
+import React, {useState, useEffect} from 'react';
 import TaskList from './src/components/TaskList'
 import * as Animatable from 'react-native-animatable';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Task from './src/services/Task'
+//import Task from './src/components/TaskList/services/sqlite/Task'
+import * as SQLite from 'expo-sqlite';
 
 const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
 
+const db = SQLite.openDatabase("db.db");
+
 export default function App() {
-  const [task, setTask] = useState([])
 
+  const [task, setTask] = useState("")
+  const [tasks, setTasks] = useState([])
   const [open, setOpen] = useState(false)
-  const [input, setInput] = useState('')
+  const [input, setInput] = useState(inputVazio)
 
-  // Buscando todas tarefas ao iniciar o app
-  useEffect(() => {
-    async function loadTask(){
-      const taskStorage = await AsyncStorage.getItem('@task')
-
-      if(taskStorage){
-        setTask(JSON.parse(taskStorage));
-      }
-    }
-
-    loadTask();
-
-  }, [])
-
-  //Salvando caso tenha alguma tarefa alterada
-  useEffect(() => {
-    async function saveTasks(){
-      await AsyncStorage.setItem('@task', JSON.stringify(task))
-    }
-    saveTasks();
-
-  },[task])
-
-  function handleAdd(){
-    if(input == '')return;
-    const data = {
-      key: input,
-      task: input
-    }
-
-    setTask([...task,data])
-    setOpen(false)
-    setInput('')
+  const inputVazio = {
+    input: ''
   }
 
+  const createTables = () => {
+    try{
+      db.transaction(txn => {
+        txn.executeSql(
+          `CREATE TABLE IF NOT EXISTS task (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao VARCHAR(100))`,
+          [],
+          (sqlTxn, res) => {
+            console.log("tabela criada com sucesso");
+          },
+        );
+      });
+    }catch(err){
+      console.log("ERRO AO CRIAR TABELA=>", err);
+    }
+  };
 
-  const handleDelete = useCallback((data) =>{
-    const find = task.filter(r => r.key !== data.key)
-    setTask(find)
-  })
+  const addTask = () => {
+    try{
+      if (!input) {
+        alert("Preencha o campo")
+        return false;
+      }
+      db.transaction(txn => {
+        txn.executeSql(
+          `INSERT INTO task (descricao) VALUES (?)`,
+          [input],
+          (sqlTxn, res) => {
+            console.log(`${input} adicionada com sucesso`);
+            getTasks();
+            setTask("");
+          },
+        );
+      });
+    }catch (err) {
+      console.log('ERRO AO ADICIONAR=>', err);
+    }
+  };
+
+  const getTasks = () => {
+    try{
+      db.transaction(txn => {
+        txn.executeSql(
+          `SELECT * FROM task ORDER BY id DESC`,
+          [],
+          (sqlTxn, res) => {
+            console.log("task recuperadas com suesso");
+            let len = res.rows.length;
+  
+            if (len > 0) {
+              let results = [];
+              for (let i = 0; i < len; i++) {
+                let item = res.rows.item(i);
+                results.push({ id: item.id, descricao: item.descricao });
+              }
+              setTasks(results);
+              console.log("RESULTS =>", results);
+            }
+          },
+        );
+      });
+
+    }catch(err){
+      console.log('ERRO AO OBTER=>', err);
+    }
+  };
+
+  const renderTask = ({ item }) => {
+    return (
+      <Animatable.View 
+      style={styles.borda}
+      animation="bounceIn"
+      useNativeDriver 
+      >
+      <TouchableOpacity data={item} onPress={() => handleDelete(item)}>
+          <Ionicons name="md-checkmark-circle" size={30} color={'#121212'}/>
+      </TouchableOpacity>
+      <View>
+          <Text style={styles.task}>{item.descricao}</Text>
+      </View>
+      </Animatable.View>
+    );
+  };
+
+  useEffect(() => {
+    createTables();
+    getTasks();
+  }, []);
+
+
+  const handleDelete = (id) => { 
+    db.transaction(txn => {
+      txn.executeSql(
+        'DELETE FROM task WHERE id = ?',
+        [id],
+        (sqlTxn, res) => {
+          console.log("Exlcuido com sucesso");
+        },
+        error => {console.log('ERRO AO EXCLUIR =>', error);}
+      )
+    })
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -66,9 +135,9 @@ export default function App() {
       <FlatList
         marginHorizontal={10}
         showsHorizontalScrollIndicator={false}
-        data={task}
-        keyExtractor={(item) => String(item.key)}
-        renderItem={({item}) => <TaskList data={item} handlDeLete={handleDelete}/>}
+        data={tasks}
+        renderItem={renderTask}
+        key={tasks => tasks.id}
       />
 
       <Modal animationType='slide' transparent={false} visible={open}>
@@ -88,11 +157,13 @@ export default function App() {
             autoCorrect={false}
             placeholder='O que precisa fazer hoje?'
             style={styles.input}
-            value={input}
+            value={inputVazio.input}
             onChangeText={ (texto) => setInput(texto)}
             />
-
-            <TouchableOpacity style={styles.handleAdd} onPress={handleAdd}>
+            <TouchableOpacity 
+            style={styles.handleAdd} 
+            onPress={addTask}
+            >
               <Text style={styles.handleAddText}>Cadastrar</Text>
             </TouchableOpacity>
 
@@ -187,5 +258,27 @@ const styles = StyleSheet.create({
   },
   handleAddText:{
     fontSize: 20,
-  }
+  },
+  task:{
+    color: "#121212",
+    paddingLeft: 8,
+    paddingRight: 20,
+    fontSize: 20,
+  },
+  borda:{
+    flex: 1,
+    margin: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    borderRadius: 5,
+    padding: 7,
+    elevation: 1.5,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset:{
+        width: 1,
+        height: 3,
+    }
+},
 });
