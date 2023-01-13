@@ -140,19 +140,19 @@ import db from './SQLiteDatabase';
 
 // const remove = (id) => {
 //     return new Promise((resolve, reject) => {
-    //   db.transaction((tx) => {
-    //     //comando SQL modificável
-    //     tx.executeSql(
-    //       "DELETE FROM task WHERE id=?;",
-    //       [id],
-    //       //-----------------------
-    //       (_, { rowsAffected }) => {
-    //         resolve(rowsAffected);
-    //         console.log('Excluido com sucesso');
-    //       },
-    //       (_, error) => reject(error) // erro interno em tx.executeSql
-    //     );
-    //   });
+//       db.transaction((tx) => {
+//         //comando SQL modificável
+//         tx.executeSql(
+//           "DELETE FROM task WHERE id=?;",
+//           [id],
+//           //-----------------------
+//           (_, { rowsAffected }) => {
+//             resolve(rowsAffected);
+//             console.log('Excluido com sucesso');
+//           },
+//           (_, error) => reject(error) // erro interno em tx.executeSql
+//         );
+//       });
 //     });
 //   };
 
