@@ -8,14 +8,24 @@ import Checkbox from 'expo-checkbox';
 
 const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
 
-const db = SQLite.openDatabase("db.db");
+const db = SQLite.openDatabase("db.db", 2);
 
 export default function App() {
 
-  //const [task, setTask] = useState("")
   const [tasks, setTasks] = useState([])
   const [open, setOpen] = useState(false)
-  //const [input, setInput] = useState('')
+  const [setModalVisible] = useState(false)
+  const { visible, setVisible } = useState(false);
+
+  if (db.version >= 2) {
+
+    try {
+      db.exec([{ sql: "ALTER TABLE task ADD COLUMN situacao BOOLEAN ", args: [] }], false, () => console.log())
+    } catch (error) {
+      console.log('ALTER_TABLE_TABELA_TASKS', error);
+    }
+  }
+;
 
   const [task, setTask] = useState({
     input: '',
@@ -40,16 +50,15 @@ export default function App() {
 
   const addTask = () => {
     try{
-      if (!input) {
+      if (task.input === '') {
         alert("Preencha o campo")
-        return false;
       }
       db.transaction(tx => {
         tx.executeSql(
           `INSERT INTO task (descricao, situacao) VALUES (?, ?)`,
           [task.input, task.checked],
           (sqlTx, res) => {
-            console.log(`${input} adicionada com sucesso`);
+            console.log(`${task.input} adicionada com sucesso`);
             getTasks();
           },
         );
@@ -66,14 +75,15 @@ export default function App() {
           `SELECT * FROM task ORDER BY id DESC`,
           [],
           (sqlTx, res) => {
-            console.log("task recuperadas com suesso");
+            console.log("task recuperadas com sucesso");
             let len = res.rows.length;
-  
+            console.log("LISTA=>", len);
             if (len > 0) {
+              
               let results = [];
               for (let i = 0; i < len; i++) {
                 let item = res.rows.item(i);
-                results.push({ id: item.id, descricao: item.descricao, situacao: item.situacao });
+                results.push({ id: item.id, descricao: item.descricao, situacao: item.situacao});
               }
               setTasks(results);
               console.log("RESULTS =>", results);
@@ -87,7 +97,7 @@ export default function App() {
     }
   };
 
-  const renderTask = ({ item }) => {
+  const renderTask = ({ item, name, id  }) => {
 
     return (
       <Animatable.View 
@@ -95,20 +105,25 @@ export default function App() {
       animation="bounceIn"
       useNativeDriver 
       >
-      <TouchableOpacity onPress={() => handleDelete(item.id)}>
-        <AntDesign name="delete" size={30} color="red" />
-      </TouchableOpacity>
+
       <View>
-          <Text style={styles.task}>{item.descricao}</Text>
-      </View>
-      <View>
-      <Checkbox
+        <Checkbox
           style={styles.checkbox}
           value={task.checked}
-          onValueChange={setTask}
+          onValueChange={(check) => setTask({...task, checked: check})}
           color={task.checked ? 'green' : undefined}
+          onPress={() => setVisible(!visible)}
         />
       </View>
+      <View>
+        <Text style={styles.task}>{item.descricao}</Text>
+      </View>
+      <View style={styles.lixeira}>
+        <TouchableOpacity onPress={() => handleDelete(item.id)}>
+          <AntDesign name="delete" size={30} color="red" />
+        </TouchableOpacity>
+      </View>
+
       </Animatable.View>
     );
   };
@@ -154,7 +169,14 @@ export default function App() {
         key={tak => tak.id}
       />
 
-      <Modal animationType='slide' transparent={false} visible={open}>
+      <Modal 
+      animationType='slide' 
+      transparent={false} 
+      visible={open}
+      onRequestClose={() => {
+        setModalVisible(false);
+      }}
+      >
         <SafeAreaView style={styles.modal}>
 
           <View style={styles.modalHeader}>
@@ -172,7 +194,7 @@ export default function App() {
             placeholder='O que precisa fazer hoje?'
             style={styles.input}
             value={task.input}
-            onChangeText={ (texto) => setTask(texto)}
+            onChangeText={(texto) => setTask({ ...task, input: texto })}
             />
             <TouchableOpacity 
             style={styles.handleAdd} 
@@ -295,8 +317,10 @@ const styles = StyleSheet.create({
         height: 3,
     }
 },
-checkbox: {
-  justifyContent: 'flex-end', 
-  alignItems: 'flex-end',
-},
+  lixeira:{
+    flex: 1,
+    margin: 4,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  }
 });
