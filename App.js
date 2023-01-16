@@ -5,19 +5,30 @@ import * as Animatable from 'react-native-animatable';
 import * as SQLite from 'expo-sqlite';
 import { AntDesign } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
+import DropDownPicker from 'react-native-dropdown-picker';
+import {Picker} from '@react-native-picker/picker';
 
 const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
 
-const db = SQLite.openDatabase("db.db", 2);
+const db = SQLite.openDatabase("db.db", 4);
 
 export default function App() {
 
   const [tasks, setTasks] = useState([])
   const [open, setOpen] = useState(false)
-  const [setModalVisible] = useState(false)
+  const [openCombo, setOpenCombo] = useState(false);
   const { visible, setVisible } = useState(false);
 
-  if (db.version >= 2) {
+  if (db.version >= 4) {
+
+    try {
+      db.exec([{ sql: "ALTER TABLE task ADD COLUMN status INTEGER ", args: [] }], false, () => console.log())
+    } catch (error) {
+      console.log('ALTER_TABLE_TABELA_TASKS', error);
+    }
+  }
+
+  if (db.version >= 3) {
 
     try {
       db.exec([{ sql: "ALTER TABLE task ADD COLUMN situacao BOOLEAN ", args: [] }], false, () => console.log())
@@ -29,14 +40,15 @@ export default function App() {
 
   const [task, setTask] = useState({
     input: '',
-    checked: false
+    checked: false,
+    status: 'Normal'
   })
 
   const createTables = () => {
     try{
       db.transaction(tx => {
         tx.executeSql(
-          `CREATE TABLE IF NOT EXISTS task (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao VARCHAR(100), situacao BOOLEAN)`,
+          `CREATE TABLE IF NOT EXISTS task (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao VARCHAR(100), situacao BOOLEAN, status INTEGER)`,
           [],
           (sqlTx, res) => {
             console.log("tabela criada com sucesso");
@@ -55,8 +67,9 @@ export default function App() {
       }
       db.transaction(tx => {
         tx.executeSql(
-          `INSERT INTO task (descricao, situacao) VALUES (?, ?)`,
-          [task.input, task.checked],
+          `INSERT INTO task (descricao, situacao, status) VALUES (?, ?, ?)`,
+          [task.input, task.checked, task.status],
+          console.log('Oq esta vindo aq=>', task.input, task.checked, task.status),
           (sqlTx, res) => {
             console.log(`${task.input} adicionada com sucesso`);
             getTasks();
@@ -83,7 +96,7 @@ export default function App() {
               let results = [];
               for (let i = 0; i < len; i++) {
                 let item = res.rows.item(i);
-                results.push({ id: item.id, descricao: item.descricao, situacao: item.situacao});
+                results.push({ id: item.id, descricao: item.descricao, situacao: item.situacao, status: item.status,});
               }
               setTasks(results);
               console.log("RESULTS =>", results);
@@ -97,7 +110,7 @@ export default function App() {
     }
   };
 
-  const renderTask = ({ item, name, id  }) => {
+  const renderTask = ({ item  }) => {
 
     return (
       <Animatable.View 
@@ -105,25 +118,46 @@ export default function App() {
       animation="bounceIn"
       useNativeDriver 
       >
-
-      <View>
+    
+    {(item.situacao == 0 ? 
+      <View style={styles.tudo}>
         <Checkbox
           style={styles.checkbox}
-          value={task.checked}
-          onValueChange={(check) => setTask({...task, checked: check})}
+          value={(item.situacao == 1 ? true : false)}
+          onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
           color={task.checked ? 'green' : undefined}
-          onPress={() => setVisible(!visible)}
-        />
+          />
+        <View>
+          <Text style={styles.task}>{item.descricao}</Text>
+        </View>
+        <View style={styles.status}>
+          <Text >{item.status}</Text>
+        </View>
       </View>
-      <View>
-        <Text style={styles.task}>{item.descricao}</Text>
-      </View>
-      <View style={styles.lixeira}>
-        <TouchableOpacity onPress={() => handleDelete(item.id)}>
-          <AntDesign name="delete" size={30} color="red" />
-        </TouchableOpacity>
-      </View>
-
+      :  (
+        <View style={styles.tudo}>
+          <View>
+            <Checkbox
+            style={styles.checkbox}
+            value={(item.situacao == 1 ? true : false)}
+            onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
+            color={task.checked ? 'green' : undefined}
+            />
+          </View>
+          <View>
+            <Text style={styles.task}>{item.descricao}</Text>
+          </View>
+          <View style={styles.status}>
+            <Text >{item.status}</Text>
+          </View>
+          <View  style={styles.lixeira}>
+            <TouchableOpacity onPress={() => handleDelete(item.id)}>
+              <AntDesign name="delete" size={25} color="red"/>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )
+      )}
       </Animatable.View>
     );
   };
@@ -132,6 +166,9 @@ export default function App() {
     createTables();
     getTasks();
   }, []);
+
+  useEffect(() => {
+  }, [tasks]);
 
 
   const handleDelete = (id) => { 
@@ -146,6 +183,37 @@ export default function App() {
           },
           error => {console.log(error)}
         )
+      })
+    }catch(error){
+      console.log(error)
+    }
+  }
+
+  const handleUpadteSituacao = (id, situacao) => { 
+    try{
+      db.transaction(tx => {
+        if (situacao == 1) {
+          tx.executeSql(
+            'UPDATE task set situacao = 0 WHERE id = ?',
+            [id],
+            (sqlTx, res) => {
+              console.log('exlcuido com sucesso');
+              getTasks();
+            },
+            error => {console.log(error)}
+          )
+        } else {
+          tx.executeSql(
+            'UPDATE task set situacao = 1 WHERE id = ?',
+            [id],
+            (sqlTx, res) => {
+              console.log('exlcuido com sucesso');
+              getTasks();
+            },
+            error => {console.log(error)}
+          )
+        }
+        
       })
     }catch(error){
       console.log(error)
@@ -173,9 +241,6 @@ export default function App() {
       animationType='slide' 
       transparent={false} 
       visible={open}
-      onRequestClose={() => {
-        setModalVisible(false);
-      }}
       >
         <SafeAreaView style={styles.modal}>
 
@@ -196,6 +261,17 @@ export default function App() {
             value={task.input}
             onChangeText={(texto) => setTask({ ...task, input: texto })}
             />
+            <Picker
+              selectedValue={task.status}
+              style={{ height: 50, width: 150, color: "white" }}
+              onValueChange={(itemValue, itemIndex) =>
+                setTask({ ...task, status: itemValue })
+              }>
+              <Picker.Item label="Normal" value="Normal" />
+              <Picker.Item label="Importante" value="Importante" />
+              <Picker.Item label="Urgente" value="Urgente" />
+              
+            </Picker>
             <TouchableOpacity 
             style={styles.handleAdd} 
             onPress={addTask}
@@ -322,5 +398,18 @@ const styles = StyleSheet.create({
     margin: 4,
     flexDirection: 'row',
     justifyContent: 'flex-end',
+  },
+  tudo:{
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  status:{
+    flex: 1,
+    margin: 4,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    color: "#121212",
+    fontSize: 15,
   }
 });
