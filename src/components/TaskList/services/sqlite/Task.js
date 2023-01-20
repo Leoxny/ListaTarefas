@@ -111,7 +111,6 @@ import db from './SQLiteDatabase';
  * - Não recebe parametros;
  * - Retorna uma Promise;
  * - O resultado da Promise é uma lista(Array) de objetos;
- * - Pode retornar erro (reject) caso o ID não exista ou então caso ocorra erro no SQL
  * - Pode retornar um array vazio caso não existam registros
  */
 

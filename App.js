@@ -1,14 +1,13 @@
-import { StyleSheet, Text, View, SafeAreaView, StatusBar,TouchableOpacity, FlatList, Modal, TextInput, CheckBox } from 'react-native';
-import {Ionicons} from '@expo/vector-icons'
-import React, {useState, useEffect} from 'react';
+import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, FlatList, Modal, TextInput, CheckBox } from 'react-native';
+import { Ionicons } from '@expo/vector-icons'
+import React, { useState, useEffect } from 'react';
 import * as Animatable from 'react-native-animatable';
 import * as SQLite from 'expo-sqlite';
 import { AntDesign } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
-import DropDownPicker from 'react-native-dropdown-picker';
-import {Picker} from '@react-native-picker/picker';
+import { Picker } from '@react-native-picker/picker';
 
-const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
+//const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
 
 const db = SQLite.openDatabase("db.db", 4);
 
@@ -16,8 +15,12 @@ export default function App() {
 
   const [tasks, setTasks] = useState([])
   const [open, setOpen] = useState(false)
-  const [openCombo, setOpenCombo] = useState(false);
-  const { visible, setVisible } = useState(false);
+
+  const [task, setTask] = useState({
+    input: '',
+    checked: false,
+    status: 'Normal'
+  })
 
   if (db.version >= 4) {
 
@@ -36,16 +39,11 @@ export default function App() {
       console.log('ALTER_TABLE_TABELA_TASKS', error);
     }
   }
-;
+  ;
 
-  const [task, setTask] = useState({
-    input: '',
-    checked: false,
-    status: 'Normal'
-  })
 
   const createTables = () => {
-    try{
+    try {
       db.transaction(tx => {
         tx.executeSql(
           `CREATE TABLE IF NOT EXISTS task (id INTEGER PRIMARY KEY AUTOINCREMENT, descricao VARCHAR(100), situacao BOOLEAN, status INTEGER)`,
@@ -55,13 +53,13 @@ export default function App() {
           },
         );
       });
-    }catch(error){
+    } catch (error) {
       console.log("ERRO AO CRIAR TABELA=>", error);
     }
   };
 
   const addTask = () => {
-    try{
+    try {
       if (task.input === '') {
         alert("Preencha o campo")
       }
@@ -72,107 +70,103 @@ export default function App() {
           console.log('Oq esta vindo aq=>', task.input, task.checked, task.status),
           (sqlTx, res) => {
             console.log(`${task.input} adicionada com sucesso`);
-            getTasks();
           },
         );
       });
-    }catch (error) {
+    } catch (error) {
       console.log('ERRO AO ADICIONAR=>', error);
     }
   };
 
+
+  const listTasks = async () => {
+    try {
+      let tasks_db = await getTasks();
+      console.log('LISTA=>', tasks_db);
+      setTasks(tasks_db)
+    } catch (error) {
+      console.log('ERRO NO LISTA=>', error);
+    }
+  }
+
   const getTasks = () => {
-    try{
-      db.transaction(tx => {
+    return new Promise((resolve, reject) => {
+      db.transaction((tx) => {
+        //comando SQL modificável
         tx.executeSql(
-          `SELECT * FROM task ORDER BY id DESC`,
+          "SELECT * FROM task;",
           [],
-          (sqlTx, res) => {
-            console.log("task recuperadas com sucesso");
-            let len = res.rows.length;
-            console.log("LISTA=>", len);
-            if (len > 0) {
-              
-              let results = [];
-              for (let i = 0; i < len; i++) {
-                let item = res.rows.item(i);
-                results.push({ id: item.id, descricao: item.descricao, situacao: item.situacao, status: item.status,});
-              }
-              setTasks(results);
-              console.log("RESULTS =>", results);
-            }
-          },
+          //-----------------------
+          (_, { rows }) => resolve(rows._array),
+          (_, error,) => reject(console.log(error)), // erro interno em tx.executeSql
         );
       });
-
-    }catch(error){
-      console.log('ERRO AO OBTER=>', error);
-    }
+    });
   };
 
-  const renderTask = ({ item  }) => {
+  const renderTask = ({ item }) => {
 
     return (
-      <Animatable.View 
-      style={styles.borda}
-      animation="bounceIn"
-      useNativeDriver 
+      <Animatable.View
+        style={styles.borda}
+        animation="bounceIn"
+        useNativeDriver
       >
-    
-    {(item.situacao == 0 ? 
-      <View style={styles.tudo}>
-        <Checkbox
-          style={styles.checkbox}
-          value={(item.situacao == 1 ? true : false)}
-          onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
-          color={task.checked ? 'green' : undefined}
-          />
-        <View>
-          <Text style={styles.task}>{item.descricao}</Text>
-        </View>
-        <View style={styles.status}>
-          <Text >{item.status}</Text>
-        </View>
-      </View>
-      :  (
-        <View style={styles.tudo}>
-          <View>
+
+        {(item.situacao == 0 ?
+          <View style={styles.tudo}>
             <Checkbox
-            style={styles.checkbox}
-            value={(item.situacao == 1 ? true : false)}
-            onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
-            color={task.checked ? 'green' : undefined}
+              style={styles.checkbox}
+              value={(item.situacao == 1 ? true : false)}
+              onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
+              color={task.checked ? 'green' : undefined}
             />
+            <View>
+              <Text style={styles.task}>{item.descricao}</Text>
+            </View>
+            <View style={styles.status}>
+              <Text >{item.status}</Text>
+            </View>
           </View>
-          <View>
-            <Text style={styles.task}>{item.descricao}</Text>
-          </View>
-          <View style={styles.status}>
-            <Text >{item.status}</Text>
-          </View>
-          <View  style={styles.lixeira}>
-            <TouchableOpacity onPress={() => handleDelete(item.id)}>
-              <AntDesign name="delete" size={25} color="red"/>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )
-      )}
+          : (
+            <View style={styles.tudo}>
+              <View>
+                <Checkbox
+                  style={styles.checkbox}
+                  value={(item.situacao == 1 ? true : false)}
+                  onValueChange={() => handleUpadteSituacao(item.id, item.situacao)}
+                  color={task.checked ? 'green' : undefined}
+                />
+              </View>
+              <View>
+                <Text style={styles.task}>{item.descricao}</Text>
+              </View>
+              <View style={styles.status}>
+                <Text >{item.status}</Text>
+              </View>
+              <View style={styles.lixeira}>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                  <AntDesign name="delete" size={24} color="red" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
+        )}
       </Animatable.View>
     );
   };
 
   useEffect(() => {
     createTables();
-    getTasks();
+    listTasks();
   }, []);
 
   useEffect(() => {
   }, [tasks]);
 
 
-  const handleDelete = (id) => { 
-    try{
+  const handleDelete = (id) => {
+    try {
       db.transaction(tx => {
         tx.executeSql(
           'DELETE FROM task WHERE id = ?',
@@ -181,41 +175,41 @@ export default function App() {
             console.log('exlcuido com sucesso');
             getTasks();
           },
-          error => {console.log(error)}
+          error => { console.log(error) }
         )
       })
-    }catch(error){
+    } catch (error) {
       console.log(error)
     }
   }
 
-  const handleUpadteSituacao = (id, situacao) => { 
-    try{
+  const handleUpadteSituacao = (id, situacao) => {
+    try {
       db.transaction(tx => {
         if (situacao == 1) {
           tx.executeSql(
             'UPDATE task set situacao = 0 WHERE id = ?',
             [id],
             (sqlTx, res) => {
-              console.log('exlcuido com sucesso');
-              getTasks();
+              console.log('desmarcado com sucesso');
             },
-            error => {console.log(error)}
+            error => { console.log(error) }
           )
         } else {
           tx.executeSql(
             'UPDATE task set situacao = 1 WHERE id = ?',
             [id],
             (sqlTx, res) => {
-              console.log('exlcuido com sucesso');
-              getTasks();
+              console.log('realizado com sucesso');
             },
-            error => {console.log(error)}
+            error => { console.log(error) }
           )
         }
-        
+
+        listTasks();
+
       })
-    }catch(error){
+    } catch (error) {
       console.log(error)
     }
   }
@@ -223,7 +217,7 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar backgroundColor="#171D31" barStyle="light-content"/>
+      <StatusBar backgroundColor="#171D31" barStyle="light-content" />
 
       <View style={styles.content}>
         <Text style={styles.title}>Minhas tarefas</Text>
@@ -237,29 +231,29 @@ export default function App() {
         key={tak => tak.id}
       />
 
-      <Modal 
-      animationType='slide' 
-      transparent={false} 
-      visible={open}
+      <Modal
+        animationType='slide'
+        transparent={false}
+        visible={open}
       >
         <SafeAreaView style={styles.modal}>
 
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setOpen(false)}>
-              <Ionicons style={{marginLeft: 5, marginRight: 5}} name="md-arrow-back" size={30} color="#FFF"/>
+              <Ionicons style={{ marginLeft: 5, marginRight: 5 }} name="md-arrow-back" size={30} color="#FFF" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Nova Tarefa</Text>
           </View>
 
           <Animatable.View style={styles.modalBody} animation="fadeInUp" useNativeDriver>
             <TextInput
-            multiline={true}
-            placeholderTextColor="#747474"
-            autoCorrect={false}
-            placeholder='O que precisa fazer hoje?'
-            style={styles.input}
-            value={task.input}
-            onChangeText={(texto) => setTask({ ...task, input: texto })}
+              multiline={true}
+              placeholderTextColor="#747474"
+              autoCorrect={false}
+              placeholder='O que precisa fazer hoje?'
+              style={styles.input}
+              value={task.input}
+              onChangeText={(texto) => setTask({ ...task, input: texto })}
             />
             <Picker
               selectedValue={task.status}
@@ -270,11 +264,11 @@ export default function App() {
               <Picker.Item label="Normal" value="Normal" />
               <Picker.Item label="Importante" value="Importante" />
               <Picker.Item label="Urgente" value="Urgente" />
-              
+
             </Picker>
-            <TouchableOpacity 
-            style={styles.handleAdd} 
-            onPress={addTask}
+            <TouchableOpacity
+              style={styles.handleAdd}
+              onPress={addTask}
             >
               <Text style={styles.handleAddText}>Cadastrar</Text>
             </TouchableOpacity>
@@ -284,15 +278,15 @@ export default function App() {
         </SafeAreaView>
       </Modal>
 
-      <AnimatableBtn 
-      style={styles.fab}
-      useNativeDriver
-      animation="bounceInUp"
-      duration={1500}
-      onPress={() => setOpen(true)}
+      <TouchableOpacity
+        style={styles.fab}
+        // useNativeDriver
+        // animation="bounceInUp"
+        // duration={1500}
+        onPress={() => setOpen(true)}
       >
-        <Ionicons name="ios-add" size={35} color="#FFF"/>
-      </AnimatableBtn>
+        <Ionicons name="ios-add" size={35} color="#FFF" />
+      </TouchableOpacity>
 
     </SafeAreaView>
   );
@@ -303,14 +297,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#171D31',
   },
-  title:{
+  title: {
     marginTop: 10,
     paddingBottom: 10,
     fontSize: 25,
     textAlign: 'center',
     color: '#FFF'
   },
-  fab:{
+  fab: {
     position: 'absolute',
     width: 60,
     height: 60,
@@ -324,30 +318,30 @@ const styles = StyleSheet.create({
     zIndex: 9,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowOffset:{
+    shadowOffset: {
       width: 1,
       height: 3,
     }
   },
-  modal:{
+  modal: {
     flex: 1,
     backgroundColor: '#171d31',
   },
-  modalHeader:{
+  modalHeader: {
     marginLeft: 10,
     marginTop: 20,
     flexDirection: 'row',
     alignItems: 'center'
   },
-  modalTitle:{
+  modalTitle: {
     marginLeft: 15,
     fontSize: 23,
     color: '#FFF'
   },
-  modalBody:{
+  modalBody: {
     marginTop: 15,
   },
-  input:{
+  input: {
     fontSize: 15,
     marginLeft: 10,
     marginRight: 10,
@@ -359,7 +353,7 @@ const styles = StyleSheet.create({
     color: '#000',
     borderRadius: 5,
   },
-  handleAdd:{
+  handleAdd: {
     backgroundColor: '#FFF',
     marginTop: 10,
     alignItems: 'center',
@@ -368,16 +362,16 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 5,
   },
-  handleAddText:{
+  handleAddText: {
     fontSize: 20,
   },
-  task:{
+  task: {
     color: "#121212",
     paddingLeft: 8,
     paddingRight: 20,
     fontSize: 20,
   },
-  borda:{
+  borda: {
     flex: 1,
     margin: 8,
     flexDirection: 'row',
@@ -388,23 +382,24 @@ const styles = StyleSheet.create({
     elevation: 1.5,
     shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowOffset:{
-        width: 1,
-        height: 3,
+    shadowOffset: {
+      width: 1,
+      height: 3,
     }
-},
-  lixeira:{
+  },
+  lixeira: {
     flex: 1,
-    margin: 4,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
-  tudo:{
+  tudo: {
+    flex: 1,
+    height: 30,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  status:{
+  status: {
     flex: 1,
     margin: 4,
     flexDirection: 'row',
