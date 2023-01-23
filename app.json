@@ -32,6 +32,9 @@
     "androidStatusBar":{
       "barStyle": "light-content",
       "backgroundColor": "#000"
+    },
+    "rnpm":{
+      "assets":["./assets/fonts/"]
     }
 
   }

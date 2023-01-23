@@ -139,7 +139,7 @@ export default function App() {
                 />
               </View>
               <View>
-                <Text style={styles.task}>{item.descricao}</Text>
+                <Text style={styles.tasks}>{item.descricao}</Text>
               </View>
               <View style={styles.status}>
                 <Text >{item.status}</Text>
@@ -352,6 +352,7 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     color: '#000',
     borderRadius: 5,
+    opacity: 0.3
   },
   handleAdd: {
     backgroundColor: '#FFF',
@@ -370,6 +371,15 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 20,
     fontSize: 20,
+    fontFamily: 'Jost_400Regular'
+  },
+  tasks:{
+    color: "#121212",
+    paddingLeft: 8,
+    textDecorationLine: 'line-through',
+    paddingRight: 20,
+    fontSize: 20,
+    fontFamily: 'Jost_400Regular'
   },
   borda: {
     flex: 1,
