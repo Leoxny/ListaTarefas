@@ -41,7 +41,6 @@ export default function App() {
   }
   ;
 
-
   const createTables = () => {
     try {
       db.transaction(tx => {
@@ -58,6 +57,16 @@ export default function App() {
     }
   };
 
+  const listTasks = async () => {
+    try {
+      let tasks_db = await getTasks();
+      console.log('LISTA=>', tasks_db);
+      setTasks(tasks_db)
+    } catch (error) {
+      console.log('ERRO NO LISTA=>', error);
+    }
+  }
+
   const addTask = () => {
     try {
       if (task.input === '') {
@@ -71,23 +80,13 @@ export default function App() {
           (sqlTx, res) => {
             console.log(`${task.input} adicionada com sucesso`);
           },
+          listTasks(),
         );
       });
     } catch (error) {
       console.log('ERRO AO ADICIONAR=>', error);
     }
   };
-
-
-  const listTasks = async () => {
-    try {
-      let tasks_db = await getTasks();
-      console.log('LISTA=>', tasks_db);
-      setTasks(tasks_db)
-    } catch (error) {
-      console.log('ERRO NO LISTA=>', error);
-    }
-  }
 
   const getTasks = () => {
     return new Promise((resolve, reject) => {
@@ -129,7 +128,7 @@ export default function App() {
             </View>
           </View>
           : (
-            <View style={styles.tudo}>
+            <View style={styles.all}>
               <View>
                 <Checkbox
                   style={styles.checkbox}
@@ -145,7 +144,7 @@ export default function App() {
                 <Text >{item.status}</Text>
               </View>
               <View style={styles.lixeira}>
-                <TouchableOpacity onPress={() => handleDelete(item.id)}>
+                <TouchableOpacity onPress={deletar}>
                   <AntDesign name="delete" size={24} color="red" />
                 </TouchableOpacity>
               </View>
@@ -156,14 +155,6 @@ export default function App() {
     );
   };
 
-  useEffect(() => {
-    createTables();
-    listTasks();
-  }, []);
-
-  useEffect(() => {
-  }, [tasks]);
-
 
   const handleDelete = (id) => {
     try {
@@ -173,13 +164,21 @@ export default function App() {
           [id],
           (sqlTx, res) => {
             console.log('exlcuido com sucesso');
-            getTasks();
+            if(res.rowsAffected > 0){
+              //deu certo
+              return true;
+            }else{
+              return false;
+            }
           },
-          error => { console.log(error) }
+          error => { 
+            console.log(error);
+          return false; }
         )
       })
     } catch (error) {
       console.log(error)
+      return false;
     }
   }
 
@@ -192,6 +191,7 @@ export default function App() {
             [id],
             (sqlTx, res) => {
               console.log('desmarcado com sucesso');
+
             },
             error => { console.log(error) }
           )
@@ -201,6 +201,7 @@ export default function App() {
             [id],
             (sqlTx, res) => {
               console.log('realizado com sucesso');
+
             },
             error => { console.log(error) }
           )
@@ -212,6 +213,36 @@ export default function App() {
     } catch (error) {
       console.log(error)
     }
+  }
+
+  useEffect(() => {
+    createTables();
+    listTasks();
+  }, []);
+
+  useEffect(() => {
+  }, [tasks]);
+
+  function cadastrar(){
+    let list_add = addTask();
+    setOpen(list_add)
+
+    if(list_add){
+      setOpen(true)
+    }else{
+      setOpen(false)
+    }
+  }
+
+  function deletar(){
+    let task_delete = handleDelete()
+
+    if(task_delete){
+      listTasks(true)
+    }else{
+      listTasks(false)
+    }
+    console.log('RESULTADO DELETE =>', task_delete)
   }
 
 
@@ -233,8 +264,11 @@ export default function App() {
 
       <Modal
         animationType='slide'
-        transparent={false}
+        transparent={true}
         visible={open}
+        onRequestClose={() => {
+          setOpen(false);
+        }}
       >
         <SafeAreaView style={styles.modal}>
 
@@ -257,7 +291,7 @@ export default function App() {
             />
             <Picker
               selectedValue={task.status}
-              style={{ height: 50, width: 150, color: "white" }}
+              style={{ height: 50, width: 150, color: "white", marginStart: 5 }}
               onValueChange={(itemValue, itemIndex) =>
                 setTask({ ...task, status: itemValue })
               }>
@@ -268,7 +302,7 @@ export default function App() {
             </Picker>
             <TouchableOpacity
               style={styles.handleAdd}
-              onPress={addTask}
+              onPress={cadastrar}
             >
               <Text style={styles.handleAddText}>Cadastrar</Text>
             </TouchableOpacity>
@@ -276,6 +310,7 @@ export default function App() {
           </Animatable.View>
 
         </SafeAreaView>
+
       </Modal>
 
       <TouchableOpacity
@@ -346,13 +381,12 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     marginRight: 10,
     marginTop: 30,
-    backgroundColor: '#FFF',
+    backgroundColor: 'white',
     padding: 9,
     height: 85,
     textAlignVertical: 'top',
     color: '#000',
     borderRadius: 5,
-    opacity: 0.3
   },
   handleAdd: {
     backgroundColor: '#FFF',
@@ -371,7 +405,6 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     paddingRight: 20,
     fontSize: 20,
-    fontFamily: 'Jost_400Regular'
   },
   tasks:{
     color: "#121212",
@@ -379,7 +412,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     paddingRight: 20,
     fontSize: 20,
-    fontFamily: 'Jost_400Regular'
+    opacity: 0.5,
   },
   borda: {
     flex: 1,
@@ -394,15 +427,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowOffset: {
       width: 1,
-      height: 3,
+      height: 3
     }
+    
   },
   lixeira: {
     flex: 1,
     flexDirection: 'row',
     justifyContent: 'flex-end',
   },
-  tudo: {
+  all: {
+    flex: 1,
+    height: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    opacity: 0.5,
+  },
+  tudo:{
     flex: 1,
     height: 30,
     flexDirection: 'row',
@@ -411,7 +453,6 @@ const styles = StyleSheet.create({
   },
   status: {
     flex: 1,
-    margin: 4,
     flexDirection: 'row',
     justifyContent: 'flex-end',
     color: "#121212",

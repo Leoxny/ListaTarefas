@@ -12,7 +12,8 @@
       "backgroundColor": "#ffffff"
     },
     "updates": {
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/2701f96b-7b7d-42c6-8e64-50c47ad67186"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -24,18 +25,23 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "lista.tarefas"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "androidStatusBar":{
+    "androidStatusBar": {
       "barStyle": "light-content",
       "backgroundColor": "#000"
     },
-    "rnpm":{
-      "assets":["./assets/fonts/"]
+    "extra": {
+      "eas": {
+        "projectId": "2701f96b-7b7d-42c6-8e64-50c47ad67186"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
-
   }
 }
