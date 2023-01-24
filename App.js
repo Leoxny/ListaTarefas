@@ -144,7 +144,7 @@ export default function App() {
                 <Text >{item.status}</Text>
               </View>
               <View style={styles.lixeira}>
-                <TouchableOpacity onPress={deletar}>
+                <TouchableOpacity onPress={() => handleDelete()}>
                   <AntDesign name="delete" size={24} color="red" />
                 </TouchableOpacity>
               </View>
@@ -164,12 +164,13 @@ export default function App() {
           [id],
           (sqlTx, res) => {
             console.log('exlcuido com sucesso');
-            if(res.rowsAffected > 0){
-              //deu certo
-              return true;
-            }else{
-              return false;
-            }
+            // if(res.rowsAffected > 0){
+            //   //deu certo
+            //   return true;
+            // }else{
+            //   return false;
+            // }
+            listTasks();
           },
           error => { 
             console.log(error);
@@ -234,16 +235,14 @@ export default function App() {
     }
   }
 
-  function deletar(){
-    let task_delete = handleDelete()
+  // function deletar(){
+  //   let task_delete = handleDelete();
 
-    if(task_delete){
-      listTasks(true)
-    }else{
-      listTasks(false)
-    }
-    console.log('RESULTADO DELETE =>', task_delete)
-  }
+  //   if(task_delete == true){
+  //     listTasks()
+  //   } 
+  //   console.log('RESULTADO DELETE =>', task_delete)
+  // }
 
 
   return (
