@@ -1,11 +1,14 @@
-import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, FlatList, Modal, TextInput, CheckBox } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'
+import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, FlatList, Modal, TextInput, Dimensions } from 'react-native';
+import { Ionicons, AntDesign } from '@expo/vector-icons'
 import React, { useState, useEffect } from 'react';
 import * as Animatable from 'react-native-animatable';
 import * as SQLite from 'expo-sqlite';
-import { AntDesign } from '@expo/vector-icons';
 import Checkbox from 'expo-checkbox';
 import { Picker } from '@react-native-picker/picker';
+
+import {
+  PieChart,
+} from 'react-native-chart-kit'
 
 //const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
 
@@ -13,8 +16,14 @@ const db = SQLite.openDatabase("db.db", 4);
 
 export default function App() {
 
+  /*
+  1 listar os useState agrupados;
+  2 funções do banco de dados, 1ª função vai ser a de criação do banco
+
+  */
   const [tasks, setTasks] = useState([])
   const [open, setOpen] = useState(false)
+  const [openGrafig, setOpenGrafig] = useState(false)
 
   const [task, setTask] = useState({
     input: '',
@@ -22,24 +31,37 @@ export default function App() {
     status: 'Normal'
   })
 
-  if (db.version >= 4) {
+  const [data, setData] = useState([{
+    name: '',
+    quant: 0,
+    color: '',
+    legendFontColor: '',
+    legendFontSize: 15
+  }])
 
-    try {
-      db.exec([{ sql: "ALTER TABLE task ADD COLUMN status INTEGER ", args: [] }], false, () => console.log())
-    } catch (error) {
-      console.log('ALTER_TABLE_TABELA_TASKS', error);
-    }
+  // const data = [
+  //   { name: 'Seoul', quant: 21500000, color: 'rgba(131, 167, 234, 1)', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+  //   { name: 'Toronto', quant: 2800000, color: '#F00', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+  //   { name: 'Beijing', quant: 527612, color: 'red', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+  //   { name: 'New York', quant: 8538000, color: '#ffffff', legendFontColor: '#7F7F7F', legendFontSize: 15 },
+  //   { name: 'Moscow', quant: 11920000, color: 'rgb(0, 0, 255)', legendFontColor: '#7F7F7F', legendFontSize: 15 }
+  // ]
+
+  const chartConfig = {
+    backgroundGradientFrom: '#1E2923',
+    backgroundGradientTo: '#08130D',
+    color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`
   }
 
-  if (db.version >= 3) {
+  const screenWidth = Dimensions.get('window').width
 
-    try {
-      db.exec([{ sql: "ALTER TABLE task ADD COLUMN situacao BOOLEAN ", args: [] }], false, () => console.log())
-    } catch (error) {
-      console.log('ALTER_TABLE_TABELA_TASKS', error);
-    }
-  }
-  ;
+  useEffect(() => {
+    createTables();
+    listTasks();
+  }, []);
+
+  useEffect(() => {
+  }, [tasks]);
 
   const createTables = () => {
     try {
@@ -49,9 +71,30 @@ export default function App() {
           [],
           (sqlTx, res) => {
             console.log("tabela criada com sucesso");
+
+            if (db.version >= 4) {
+
+              try {
+                db.exec([{ sql: "ALTER TABLE task ADD COLUMN status INTEGER ", args: [] }], false, () => console.log())
+              } catch (error) {
+                console.log('ALTER_TABLE_TABELA_TASKS', error);
+              }
+            }
+
+            if (db.version >= 3) {
+
+              try {
+                db.exec([{ sql: "ALTER TABLE task ADD COLUMN situacao BOOLEAN ", args: [] }], false, () => console.log())
+              } catch (error) {
+                console.log('ALTER_TABLE_TABELA_TASKS', error);
+              }
+            }
+            ;
           },
         );
       });
+
+
     } catch (error) {
       console.log("ERRO AO CRIAR TABELA=>", error);
     }
@@ -60,11 +103,29 @@ export default function App() {
   const listTasks = async () => {
     try {
       let tasks_db = await getTasks();
-      console.log('LISTA=>', tasks_db);
+      //console.log('LISTA=>', tasks_db);
       setTasks(tasks_db)
     } catch (error) {
       console.log('ERRO NO LISTA=>', error);
     }
+  }
+
+  const listCharts = async () => {
+    let data_charts = await getTasksCharts();
+    console.log('GRAFICOS=>', data_charts);
+
+    let new_charts = data_charts.map((item) => {
+      return {
+        name: item.name,
+        quant: item.quant,
+        color: item.name == 'Abertas' ? '#EF6C00' : '#1565C0',
+        legendFontColor: '#B0BEC5',
+        legendFontSize: 15
+      }
+    });
+    console.log('GRAFICOS NOVO=>', new_charts);
+
+    setData(new_charts);
   }
 
   const addTask = () => {
@@ -79,8 +140,8 @@ export default function App() {
           console.log('Oq esta vindo aq=>', task.input, task.checked, task.status),
           (sqlTx, res) => {
             console.log(`${task.input} adicionada com sucesso`);
+            listTasks()
           },
-          listTasks(),
         );
       });
     } catch (error) {
@@ -102,6 +163,101 @@ export default function App() {
       });
     });
   };
+
+  const handleUpadteSituacao = (id, situacao) => {
+    try {
+      db.transaction(tx => {
+        if (situacao == 1) {
+          tx.executeSql(
+            'UPDATE task set situacao = 0 WHERE id = ?',
+            [id],
+            (sqlTx, res) => {
+              console.log('desmarcado com sucesso');
+            },
+            error => { console.log(error) }
+          )
+        } else {
+          tx.executeSql(
+            'UPDATE task set situacao = 1 WHERE id = ?',
+            [id],
+            (sqlTx, res) => {
+              console.log('realizado com sucesso');
+
+            },
+            error => { console.log(error) }
+          )
+        }
+
+        listTasks();
+
+      })
+    } catch (error) {
+      console.log(error)
+    }
+  }
+
+  const handleDelete = (id) => {
+    try {
+      db.transaction(tx => {
+        tx.executeSql(
+          'DELETE FROM task WHERE id = ?',
+          [id],
+          (sqlTx, res) => {
+            console.log('exlcuido com sucesso');
+            if (res.rowsAffected > 0) {
+              //deu certo
+              return true;
+            } else {
+              return false;
+            }
+          },
+          error => {
+            console.log(error);
+            return false;
+          }
+        )
+      })
+    } catch (error) {
+      console.log(error)
+      return false;
+    }
+  }
+
+  const cadastrar = () => {
+    let list_add = addTask();
+    setOpen(list_add)
+
+    if (list_add) {
+      setOpen(true)
+    } else {
+      setOpen(false)
+    }
+  }
+
+  const createTask = () => {
+    let task_add = addTask();
+
+    listTasks(task_add)
+  }
+
+  const getTasksCharts = () => {
+    try {
+      return new Promise((resolve, reject) => {
+        db.transaction(tx => {
+          tx.executeSql(
+            'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "Abertas" WHEN 1 THEN "Concluidas" END as name FROM task GROUP BY situacao',
+            [],
+            (_, { rows }) => resolve(rows._array),
+            error => { console.log(error) }
+          )
+        })
+      });
+    } catch (error) {
+      console.log(error)
+      return null;
+    }
+
+  }
 
   const renderTask = ({ item }) => {
 
@@ -144,7 +300,7 @@ export default function App() {
                 <Text >{item.status}</Text>
               </View>
               <View style={styles.lixeira}>
-                <TouchableOpacity onPress={() => handleDelete()}>
+                <TouchableOpacity onPress={() => handleDelete(item.id)}>
                   <AntDesign name="delete" size={24} color="red" />
                 </TouchableOpacity>
               </View>
@@ -154,96 +310,6 @@ export default function App() {
       </Animatable.View>
     );
   };
-
-
-  const handleDelete = (id) => {
-    try {
-      db.transaction(tx => {
-        tx.executeSql(
-          'DELETE FROM task WHERE id = ?',
-          [id],
-          (sqlTx, res) => {
-            console.log('exlcuido com sucesso');
-            // if(res.rowsAffected > 0){
-            //   //deu certo
-            //   return true;
-            // }else{
-            //   return false;
-            // }
-            listTasks();
-          },
-          error => { 
-            console.log(error);
-          return false; }
-        )
-      })
-    } catch (error) {
-      console.log(error)
-      return false;
-    }
-  }
-
-  const handleUpadteSituacao = (id, situacao) => {
-    try {
-      db.transaction(tx => {
-        if (situacao == 1) {
-          tx.executeSql(
-            'UPDATE task set situacao = 0 WHERE id = ?',
-            [id],
-            (sqlTx, res) => {
-              console.log('desmarcado com sucesso');
-
-            },
-            error => { console.log(error) }
-          )
-        } else {
-          tx.executeSql(
-            'UPDATE task set situacao = 1 WHERE id = ?',
-            [id],
-            (sqlTx, res) => {
-              console.log('realizado com sucesso');
-
-            },
-            error => { console.log(error) }
-          )
-        }
-
-        listTasks();
-
-      })
-    } catch (error) {
-      console.log(error)
-    }
-  }
-
-  useEffect(() => {
-    createTables();
-    listTasks();
-  }, []);
-
-  useEffect(() => {
-  }, [tasks]);
-
-  function cadastrar(){
-    let list_add = addTask();
-    setOpen(list_add)
-
-    if(list_add){
-      setOpen(true)
-    }else{
-      setOpen(false)
-    }
-  }
-
-  // function deletar(){
-  //   let task_delete = handleDelete();
-
-  //   if(task_delete == true){
-  //     listTasks()
-  //   } 
-  //   console.log('RESULTADO DELETE =>', task_delete)
-  // }
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -277,6 +343,7 @@ export default function App() {
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Nova Tarefa</Text>
           </View>
+
 
           <Animatable.View style={styles.modalBody} animation="fadeInUp" useNativeDriver>
             <TextInput
@@ -312,14 +379,53 @@ export default function App() {
 
       </Modal>
 
+      <Modal
+        animationType='slide'
+        transparent={true}
+        visible={openGrafig}
+        onRequestClose={() => {
+          setOpenGrafig(false);
+        }}
+      >
+        <SafeAreaView style={styles.modal}>
+
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setOpenGrafig(false)}>
+              <Ionicons style={{ marginLeft: 5, marginRight: 5 }} name="md-arrow-back" size={30} color="#FFF" />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Gráficos</Text>
+          </View>
+
+          <PieChart
+            data={data}
+            width={screenWidth * 0.95}
+            height={220}
+            chartConfig={chartConfig}
+            accessor="quant"
+            backgroundColor="transparent"
+            paddingLeft="15"
+          />
+
+        </SafeAreaView>
+
+      </Modal>
+
       <TouchableOpacity
         style={styles.fab}
-        // useNativeDriver
-        // animation="bounceInUp"
-        // duration={1500}
         onPress={() => setOpen(true)}
       >
         <Ionicons name="ios-add" size={35} color="#FFF" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.icon}
+        onPress={() => {
+          setOpenGrafig(true)
+          listCharts();
+        }
+        }
+      >
+        <AntDesign name="areachart" size={35} color="#FFF" />
       </TouchableOpacity>
 
     </SafeAreaView>
@@ -348,6 +454,25 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     right: 25,
     bottom: 25,
+    elevation: 2,
+    zIndex: 9,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowOffset: {
+      width: 1,
+      height: 3,
+    }
+  },
+  icon: {
+    position: 'absolute',
+    width: 60,
+    height: 60,
+    backgroundColor: '#0094FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 30,
+    right: 25,
+    bottom: 105,
     elevation: 2,
     zIndex: 9,
     shadowColor: '#000',
@@ -405,7 +530,7 @@ const styles = StyleSheet.create({
     paddingRight: 20,
     fontSize: 20,
   },
-  tasks:{
+  tasks: {
     color: "#121212",
     paddingLeft: 8,
     textDecorationLine: 'line-through',
@@ -428,7 +553,7 @@ const styles = StyleSheet.create({
       width: 1,
       height: 3
     }
-    
+
   },
   lixeira: {
     flex: 1,
@@ -443,7 +568,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     opacity: 0.5,
   },
-  tudo:{
+  tudo: {
     flex: 1,
     height: 30,
     flexDirection: 'row',
