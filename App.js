@@ -8,6 +8,11 @@ import { Picker } from '@react-native-picker/picker';
 
 import {
   PieChart,
+  LineChart,
+  BarChart,
+  ProgressChart,
+  ContributionGraph,
+  StackedBarChart
 } from 'react-native-chart-kit'
 
 //const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
@@ -46,6 +51,18 @@ export default function App() {
   //   { name: 'New York', quant: 8538000, color: '#ffffff', legendFontColor: '#7F7F7F', legendFontSize: 15 },
   //   { name: 'Moscow', quant: 11920000, color: 'rgb(0, 0, 255)', legendFontColor: '#7F7F7F', legendFontSize: 15 }
   // ]
+
+  const  LineChart= {
+    labels: ["January", "February", "March", "April", "May", "June"],
+    datasets: [
+      {
+        data: [20, 45, 28, 80, 99, 43],
+        color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // optional
+        strokeWidth: 2 // optional
+      }
+    ],
+    legend: ["Rainy Days"] // optional
+  };
 
   const chartConfig = {
     backgroundGradientFrom: '#1E2923',
@@ -404,6 +421,59 @@ export default function App() {
             accessor="quant"
             backgroundColor="transparent"
             paddingLeft="15"
+          />
+
+          <LineChart
+            data={data}
+            width={screenWidth}
+            height={220}
+            chartConfig={chartConfig}
+          />
+
+          <LineChart
+            data={data}
+            width={screenWidth}
+            height={256}
+            verticalLabelRotation={30}
+            chartConfig={chartConfig}
+            bezier
+          />
+
+          <ProgressChart
+            data={data}
+            width={screenWidth}
+            height={220}
+            strokeWidth={16}
+            radius={32}
+            chartConfig={chartConfig}
+            hideLegend={false}
+          />
+
+          <BarChart
+            style={graphStyle}
+            data={data}
+            width={screenWidth}
+            height={220}
+            yAxisLabel="$"
+            chartConfig={chartConfig}
+            verticalLabelRotation={30}
+          />
+
+          <StackedBarChart
+            style={graphStyle}
+            data={data}
+            width={screenWidth}
+            height={220}
+            chartConfig={chartConfig}
+          />
+
+          <ContributionGraph
+            values={commitsData}
+            endDate={new Date("2017-04-01")}
+            numDays={105}
+            width={screenWidth}
+            height={220}
+            chartConfig={chartConfig}
           />
 
         </SafeAreaView>
