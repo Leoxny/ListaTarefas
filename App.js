@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, FlatList, Modal, TextInput, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, SafeAreaView, StatusBar, TouchableOpacity, FlatList, Modal, TextInput, Dimensions, ScrollView } from 'react-native';
 import { Ionicons, AntDesign } from '@expo/vector-icons'
 import React, { useState, useEffect } from 'react';
 import * as Animatable from 'react-native-animatable';
@@ -7,12 +7,10 @@ import Checkbox from 'expo-checkbox';
 import { Picker } from '@react-native-picker/picker';
 
 import {
-  PieChart,
-  LineChart,
   BarChart,
+  PieChart,
   ProgressChart,
-  ContributionGraph,
-  StackedBarChart
+  ContributionGraph
 } from 'react-native-chart-kit'
 
 //const AnimatableBtn = Animatable.createAnimatableComponent(TouchableOpacity)
@@ -44,29 +42,55 @@ export default function App() {
     legendFontSize: 15
   }])
 
-  // const data = [
-  //   { name: 'Seoul', quant: 21500000, color: 'rgba(131, 167, 234, 1)', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-  //   { name: 'Toronto', quant: 2800000, color: '#F00', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-  //   { name: 'Beijing', quant: 527612, color: 'red', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-  //   { name: 'New York', quant: 8538000, color: '#ffffff', legendFontColor: '#7F7F7F', legendFontSize: 15 },
-  //   { name: 'Moscow', quant: 11920000, color: 'rgb(0, 0, 255)', legendFontColor: '#7F7F7F', legendFontSize: 15 }
+  // const [bar, setBar] = useState([{
+  //   labels: '',
+  //   quant: 0,
+  //   color: ''
+  // }])
+
+  const [progress, setProgress] = useState([{
+      name: '',
+      quant: 0,
+      color: ''
+  }])
+
+
+  // const progress = [0.8, 0.9]
+
+  const bar = {
+    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
+    datasets: [{
+      data: [ 20, 45, 28, 80, 99, 43 ],
+      backgroundColor: [
+        'rgba(255, 99, 132, 0.2)',
+        'rgba(54, 162, 235, 0.2)'
+      ]
+    }]
+  }
+
+  const [commitsData, setCommitsData] = useState([{
+    name: '',
+    quant: 0
+  }])
+
+  // const commitsData = [
+  //   { date: '2017-01-02', count: 1 },
+  //   { date: '2017-01-03', count: 2 },
+  //   { date: '2017-01-04', count: 3 },
+  //   { date: '2017-01-05', count: 4 },
+  //   { date: '2017-01-06', count: 5 },
+  //   { date: '2017-01-30', count: 2 },
+  //   { date: '2017-01-31', count: 3 },
+  //   { date: '2017-03-01', count: 2 },
+  //   { date: '2017-04-02', count: 4 },
+  //   { date: '2017-03-05', count: 2 },
+  //   { date: '2017-02-30', count: 4 }
   // ]
 
-  const  LineChart= {
-    labels: ["January", "February", "March", "April", "May", "June"],
-    datasets: [
-      {
-        data: [20, 45, 28, 80, 99, 43],
-        color: (opacity = 1) => `rgba(134, 65, 244, ${opacity})`, // optional
-        strokeWidth: 2 // optional
-      }
-    ],
-    legend: ["Rainy Days"] // optional
-  };
 
   const chartConfig = {
-    backgroundGradientFrom: '#1E2923',
-    backgroundGradientTo: '#08130D',
+    backgroundGradientFrom: '#171d31',
+    backgroundGradientTo: '#171d31',
     color: (opacity = 1) => `rgba(26, 255, 146, ${opacity})`
   }
 
@@ -128,9 +152,19 @@ export default function App() {
   }
 
   const listCharts = async () => {
-    let data_charts = await getTasksCharts();
-    console.log('GRAFICOS=>', data_charts);
 
+    let data_charts = await getTasksCharts();
+    console.log('GRAFICOS PIZZA=>', data_charts);
+
+    let data_commits = await getTasksCharts();
+    console.log('GRAFICOS AI=>', data_commits);
+
+    // let data_bars = await getTasksBar();
+    // console.log('GRAFICOS BARS=>', data_bars);
+
+    let data_progress = await getTasksProgress();
+    console.log('GRAFICOS PROGRRES=>', data_progress);
+    
     let new_charts = data_charts.map((item) => {
       return {
         name: item.name,
@@ -140,9 +174,37 @@ export default function App() {
         legendFontSize: 15
       }
     });
-    console.log('GRAFICOS NOVO=>', new_charts);
+    console.log('GRAFICOS PIZZA=>', new_charts);
+
+    let new_commits = data_commits.map((item) => {
+      return {
+        name: item.name,
+        quant: item.quant,
+      }
+    });
+    console.log('GRAFICOS commits=>', new_commits);
+
+    // let new_bars = data_bars.map((item) => {
+    //   return {
+    //     labels: item.labels,
+    //     quant: item.quant,
+    //     backgroundColor: item.labels == 'Abertas' ? '#EF6C00' : '#1565C0',
+    //   }
+    // });
+    // console.log('GRAFICOS BARS=>', new_bars);
+
+    let new_progress = data_progress.map((item) =>{
+      return {
+        quant: item.quant,
+        color: item.quant == 0 ? '#EF6C00' : '#1565C0',
+      }
+    })
+    console.log('GRAFICOS PROGGRES=>', new_progress);
 
     setData(new_charts);
+    setCommitsData(new_commits)
+    // setBar(new_bars)
+    setProgress(new_progress)
   }
 
   const addTask = () => {
@@ -263,6 +325,44 @@ export default function App() {
         db.transaction(tx => {
           tx.executeSql(
             'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "Abertas" WHEN 1 THEN "Concluidas" END as name FROM task GROUP BY situacao',
+            [],
+            (_, { rows }) => resolve(rows._array),
+            error => { console.log(error) }
+          )
+        })
+      });
+    } catch (error) {
+      console.log(error)
+      return null;
+    }
+
+  }
+
+  const getTasksBar = () => {
+    try {
+      return new Promise((resolve, reject) => {
+        db.transaction(tx => {
+          tx.executeSql(
+            'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "Abertas" WHEN 1 THEN "Concluidas" END as labels FROM task GROUP BY situacao',
+            [],
+            (_, { rows }) => resolve(rows._array),
+            error => { console.log(error) }
+          )
+        })
+      });
+    } catch (error) {
+      console.log(error)
+      return null;
+    }
+
+  }
+
+  const getTasksProgress = () => {
+    try {
+      return new Promise((resolve, reject) => {
+        db.transaction(tx => {
+          tx.executeSql(
+            'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "0" WHEN 1 THEN "0" END as quant FROM task GROUP BY situacao',
             [],
             (_, { rows }) => resolve(rows._array),
             error => { console.log(error) }
@@ -406,75 +506,58 @@ export default function App() {
       >
         <SafeAreaView style={styles.modal}>
 
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setOpenGrafig(false)}>
-              <Ionicons style={{ marginLeft: 5, marginRight: 5 }} name="md-arrow-back" size={30} color="#FFF" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Gráficos</Text>
-          </View>
+          <ScrollView>
 
-          <PieChart
-            data={data}
-            width={screenWidth * 0.95}
-            height={220}
-            chartConfig={chartConfig}
-            accessor="quant"
-            backgroundColor="transparent"
-            paddingLeft="15"
-          />
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setOpenGrafig(false)}>
+                <Ionicons style={{ marginLeft: 5, marginRight: 5 }} name="md-arrow-back" size={30} color="#FFF" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Gráficos</Text>
+            </View>
 
-          <LineChart
-            data={data}
-            width={screenWidth}
-            height={220}
-            chartConfig={chartConfig}
-          />
+            <PieChart
+              data={data}
+              width={screenWidth * 0.95}
+              height={220}
+              chartConfig={chartConfig}
+              accessor="quant"
+              backgroundColor="transparent"
+              paddingLeft="15"
+            />
 
-          <LineChart
-            data={data}
-            width={screenWidth}
-            height={256}
-            verticalLabelRotation={30}
-            chartConfig={chartConfig}
-            bezier
-          />
+            <ProgressChart
+              data={progress}
+              width={screenWidth * 0.95}
+              height={220}
+              chartConfig={chartConfig}
+              backgroundColor="transparent"
+              accessor="quant"
+              paddingLeft="15"
+              style={styles.progress}
+            />
 
-          <ProgressChart
-            data={data}
-            width={screenWidth}
-            height={220}
-            strokeWidth={16}
-            radius={32}
-            chartConfig={chartConfig}
-            hideLegend={false}
-          />
 
-          <BarChart
-            style={graphStyle}
-            data={data}
-            width={screenWidth}
-            height={220}
-            yAxisLabel="$"
-            chartConfig={chartConfig}
-            verticalLabelRotation={30}
-          />
+            <BarChart
+              data={bar}
+              width={screenWidth * 0.95}
+              height={220}
+              chartConfig={chartConfig}
+              accessor="quant"
+              paddingLeft="15"
+              style={styles.bar}
+            />
 
-          <StackedBarChart
-            style={graphStyle}
-            data={data}
-            width={screenWidth}
-            height={220}
-            chartConfig={chartConfig}
-          />
+            <ContributionGraph
+              values={commitsData}
+              //endDate={new Date('2017-04-01')}
+              numDays={105}
+              width={screenWidth}
+              height={220}
+              chartConfig={chartConfig}
+              style={styles.bar}
+            />
 
-          <ContributionGraph
-            values={commitsData}
-            endDate={new Date("2017-04-01")}
-            numDays={105}
-            width={screenWidth}
-            height={220}
-            chartConfig={chartConfig}
-          />
+          </ScrollView>
 
         </SafeAreaView>
 
@@ -651,5 +734,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     color: "#121212",
     fontSize: 15,
+  },
+  progress:{
+    marginStart: 10,
+    marginTop: 5,
+
+  },
+  bar:{
+    marginTop: 10,
+    marginStart: 10
   }
 });
