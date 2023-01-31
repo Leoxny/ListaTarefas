@@ -42,51 +42,20 @@ export default function App() {
     legendFontSize: 15
   }])
 
-  // const [bar, setBar] = useState([{
-  //   labels: '',
-  //   quant: 0,
-  //   color: ''
-  // }])
 
-  const [progress, setProgress] = useState([{
-      name: '',
-      quant: 0,
-      color: ''
-  }])
-
-
-  // const progress = [0.8, 0.9]
-
-  const bar = {
-    labels: ['January', 'February', 'March', 'April', 'May', 'June'],
-    datasets: [{
-      data: [ 20, 45, 28, 80, 99, 43 ],
-      backgroundColor: [
-        'rgba(255, 99, 132, 0.2)',
-        'rgba(54, 162, 235, 0.2)'
-      ]
-    }]
+  const [progress, setProgress] = useState({
+    data: [0, 0]
   }
+  )
 
-  const [commitsData, setCommitsData] = useState([{
-    name: '',
-    quant: 0
-  }])
-
-  // const commitsData = [
-  //   { date: '2017-01-02', count: 1 },
-  //   { date: '2017-01-03', count: 2 },
-  //   { date: '2017-01-04', count: 3 },
-  //   { date: '2017-01-05', count: 4 },
-  //   { date: '2017-01-06', count: 5 },
-  //   { date: '2017-01-30', count: 2 },
-  //   { date: '2017-01-31', count: 3 },
-  //   { date: '2017-03-01', count: 2 },
-  //   { date: '2017-04-02', count: 4 },
-  //   { date: '2017-03-05', count: 2 },
-  //   { date: '2017-02-30', count: 4 }
-  // ]
-
+  const [barData, setBarData] = useState(
+    {
+      labels: ['Abertas', 'Fechadas'],
+      datasets: [{
+        data: [0, 0]
+      }]
+    }
+  )
 
   const chartConfig = {
     backgroundGradientFrom: '#171d31',
@@ -153,58 +122,64 @@ export default function App() {
 
   const listCharts = async () => {
 
-    let data_charts = await getTasksCharts();
-    console.log('GRAFICOS PIZZA=>', data_charts);
+    try {
 
-    let data_commits = await getTasksCharts();
-    console.log('GRAFICOS AI=>', data_commits);
+      let data_charts = await getTasksCharts();
+      console.log('GRAFICOS PIZZA=>', data_charts);
 
-    // let data_bars = await getTasksBar();
-    // console.log('GRAFICOS BARS=>', data_bars);
+      let new_charts = data_charts.map((item) => {
+        return {
+          name: item.name,
+          quant: item.quant,
+          color: item.name == 'Abertas' ? '#EF6C00' : '#1565C0',
+          legendFontColor: '#B0BEC5',
+          legendFontSize: 15
+        }
+      });
+      console.log('GRAFICOS PIZZA=>', new_charts);
 
-    let data_progress = await getTasksProgress();
-    console.log('GRAFICOS PROGRRES=>', data_progress);
-    
-    let new_charts = data_charts.map((item) => {
-      return {
-        name: item.name,
-        quant: item.quant,
-        color: item.name == 'Abertas' ? '#EF6C00' : '#1565C0',
-        legendFontColor: '#B0BEC5',
-        legendFontSize: 15
+      setData(new_charts);
+
+      let total_abertas = await getTotalTasksBar(0);
+      let total_fechadas = await getTotalTasksBar(1);
+
+      console.log('TOTAIS=>', total_abertas, total_fechadas);
+
+      const new_bars = {
+        labels: ['Fechada', 'Abertas'],
+        datasets: [{
+          data: [total_abertas, total_fechadas],
+        }],
       }
-    });
-    console.log('GRAFICOS PIZZA=>', new_charts);
+      console.log('BARS2=>', new_bars);
 
-    let new_commits = data_commits.map((item) => {
-      return {
-        name: item.name,
-        quant: item.quant,
+      setBarData({
+        labels: ['Abertas', 'Fechadas'],
+        datasets: [{
+          data: [total_abertas, total_fechadas]
+        }]
+      })
+
+      let total_abertas_progress = await getTasksProgress(0);
+      let total_fechadas_progress = await getTasksProgress(1);
+
+      console.log('TOTAIS2=>', total_abertas_progress, total_fechadas_progress);
+
+      const new_progress ={
+        data: [total_abertas_progress, total_fechadas_progress]
       }
-    });
-    console.log('GRAFICOS commits=>', new_commits);
+      console.log('PROGGRES=>', new_progress);
 
-    // let new_bars = data_bars.map((item) => {
-    //   return {
-    //     labels: item.labels,
-    //     quant: item.quant,
-    //     backgroundColor: item.labels == 'Abertas' ? '#EF6C00' : '#1565C0',
-    //   }
-    // });
-    // console.log('GRAFICOS BARS=>', new_bars);
+      setProgress({
+        data: [total_abertas_progress, total_fechadas_progress]
+      })
 
-    let new_progress = data_progress.map((item) =>{
-      return {
-        quant: item.quant,
-        color: item.quant == 0 ? '#EF6C00' : '#1565C0',
-      }
-    })
-    console.log('GRAFICOS PROGGRES=>', new_progress);
+      setProgress(new_progress)
 
-    setData(new_charts);
-    setCommitsData(new_commits)
-    // setBar(new_bars)
-    setProgress(new_progress)
+    } catch (err) {
+      console.log('ERR_listCharts', err);
+    }
+
   }
 
   const addTask = () => {
@@ -219,8 +194,8 @@ export default function App() {
           console.log('Oq esta vindo aq=>', task.input, task.checked, task.status),
           (sqlTx, res) => {
             console.log(`${task.input} adicionada com sucesso`);
-            listTasks()
           },
+          listTasks()
         );
       });
     } catch (error) {
@@ -283,12 +258,13 @@ export default function App() {
           [id],
           (sqlTx, res) => {
             console.log('exlcuido com sucesso');
-            if (res.rowsAffected > 0) {
-              //deu certo
-              return true;
-            } else {
-              return false;
-            }
+            // if (res.rowsAffected > 0) {
+            //   //deu certo
+            //   return true;
+            // } else {
+            //   return false;
+            // }
+            listTasks();
           },
           error => {
             console.log(error);
@@ -338,14 +314,14 @@ export default function App() {
 
   }
 
-  const getTasksBar = () => {
+  const getTotalTasksBar = (situacao) => {
     try {
       return new Promise((resolve, reject) => {
         db.transaction(tx => {
           tx.executeSql(
-            'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "Abertas" WHEN 1 THEN "Concluidas" END as labels FROM task GROUP BY situacao',
+            `SELECT count(id) AS quant FROM task WHERE situacao = ${situacao}`,
             [],
-            (_, { rows }) => resolve(rows._array),
+            (_, { rows }) => resolve(rows._array[0]['quant']),
             error => { console.log(error) }
           )
         })
@@ -357,14 +333,14 @@ export default function App() {
 
   }
 
-  const getTasksProgress = () => {
+  const getTasksProgress = (situacao) => {
     try {
       return new Promise((resolve, reject) => {
         db.transaction(tx => {
           tx.executeSql(
-            'SELECT count(situacao) AS quant, CASE situacao WHEN 0 THEN "0" WHEN 1 THEN "0" END as quant FROM task GROUP BY situacao',
+            `SELECT count(id) AS quant FROM task WHERE situacao = ${situacao}`,
             [],
-            (_, { rows }) => resolve(rows._array),
+            (_, { rows }) => resolve(rows._array[0]['quant']),
             error => { console.log(error) }
           )
         })
@@ -536,24 +512,13 @@ export default function App() {
               style={styles.progress}
             />
 
-
             <BarChart
-              data={bar}
+              data={barData}
               width={screenWidth * 0.95}
               height={220}
               chartConfig={chartConfig}
               accessor="quant"
               paddingLeft="15"
-              style={styles.bar}
-            />
-
-            <ContributionGraph
-              values={commitsData}
-              //endDate={new Date('2017-04-01')}
-              numDays={105}
-              width={screenWidth}
-              height={220}
-              chartConfig={chartConfig}
               style={styles.bar}
             />
 
@@ -735,12 +700,12 @@ const styles = StyleSheet.create({
     color: "#121212",
     fontSize: 15,
   },
-  progress:{
+  progress: {
     marginStart: 10,
     marginTop: 5,
 
   },
-  bar:{
+  bar: {
     marginTop: 10,
     marginStart: 10
   }
